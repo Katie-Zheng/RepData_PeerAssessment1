@@ -1,0 +1,120 @@
+---
+title: "Project 1"
+author: "Katie Zheng"
+output: html_document
+---
+
+
+
+## Loading and preprocessing the data
+```{r, echo = TRUE}
+setwd("F:/PHBS/自学/编程/R/8. Reproducible research/project/1")
+activity = read.csv("activity.csv")
+```
+
+## What is mean total number of steps taken per day?
+(ignore the missing values in the dataset)
+
+1.Calculate the total number of steps taken per day
+The total number of steps taken per day is as follows:
+```{r, echo = TRUE}
+numSteps = tapply(activity$steps, activity$date, sum)
+numSteps
+```
+
+2.Make a histogram of the total number of steps taken each day
+```{r, echo = TRUE}
+hist(numSteps, 
+     xlab = "number of steps", 
+     main = "total number of steps taken per day")
+```
+
+3.Calculate and report the mean and median of the total number of steps taken per day
+```{r, echo = TRUE}
+mean(numSteps, na.rm = TRUE)
+median(numSteps, na.rm = TRUE)
+```
+The mean of the total number of steps taken per day is 10766.19.
+The median of the total number of steps taken per day is 10765.
+
+## What is the average daily activity pattern?
+
+1.Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+```{r, echo = TRUE}
+summary(activity)
+numStepsInterval = tapply(activity$steps, activity$interval, mean, na.rm = TRUE)
+plot(rownames(numStepsInterval), numStepsInterval, 
+     type = "l",
+     xlab = "5-minute interval",
+     ylab = "average number of steps")
+```
+
+2.Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r, echo = TRUE}
+maxSteps = max(numStepsInterval)
+index = match(maxSteps, numStepsInterval)
+activity$interval[104]
+```
+We can see that the 835 5-minute interval contains the maximum number of steps.
+
+## Imputing missing values
+
+1.Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+```{r, echo = TRUE}
+sum(is.na(activity$steps))
+```
+The total number of missing values is 2304.
+
+2.Devise a strategy for filling in all of the missing values in the dataset.
+```{r, echo = TRUE}
+activity2 = activity
+activity2$steps[is.na(activity2$steps)] <- numStepsInterval[as.character(activity2$interval[is.na(activity2$steps)])]
+```
+I use the mean for that 5-minute interval to fill in the missing values.
+
+3.Create a new dataset that is equal to the original dataset but with the missing data filled in.
+The new dataset is activity2 as shown above. 
+
+4.Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+```{r, echo = TRUE}
+numSteps2 = tapply(activity2$steps, activity2$date, sum)
+numSteps2
+par(mfrow = c(1,2))
+hist(numSteps, 
+     xlab = "number of steps", 
+     main = "total number of steps taken per day")
+hist(numSteps2, 
+     xlab = "number of steps", 
+     main = "total number of steps taken per day")
+mean(numSteps2)
+median(numSteps2)
+```
+These values vary a little from the estimates from the first part of the assignment. The mean and median are both 10766.19 for the new dataset. And the data are more centered in general. 
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+1.Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+```{r, echo = TRUE}
+temp = weekdays(as.Date(activity2$date))
+activity2$day = rep(NA, 17568)
+activity2$day[temp %in% c("星期六", "星期日")] <- "weekend"
+activity2$day[is.na(activity2$day)] <- "weekday"
+activity2$day = as.factor(activity2$day)
+str(activity2$day)
+```
+The created variable "day" indicates whether it is weekday or weekend. 
+
+2.Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). 
+```{r, echo = TRUE}
+library(reshape2)
+activity2Melt = melt(activity2, id = c("interval", "day"), measure.vars = c("steps"))
+activity2Cast = dcast(activity2Melt, day ~ interval, mean)
+activity2Cast2 <- melt(activity2Cast, id.vars="day", value.name = "steps", variable.name="interval")
+library(ggplot2)
+ggplot(data = activity2Cast2, aes(x=interval, y=steps, group = day)) + 
+    geom_line() + 
+    facet_grid(. ~ day)
+```
+
+We can see that in weekdays steps tend to be more concentrated than weekend. 
